@@ -1,0 +1,102 @@
+---
+  # - name: Ensure repository is update
+  #   yum:
+  #     name: '*'
+  #     state: latest
+
+  # - name: Install Firewalld
+  #   yum:
+  #     name: firewalld
+  #     state: latest
+  
+  # - name: Enable Firewalld
+  #   command: systemctl enable firewalld
+
+  # - name: Start Firewalld
+  #   command: systemctl start firewalld
+
+  # - name: Allow http service
+  #   command: firewall-cmd --zone=public --add-service=http --permanent
+
+  # - name: Reload Firewall settings
+  #   command: firewall-cmd --reload
+
+  - name: Install pip
+    yum:
+      name: python-pip
+      state: latest
+
+  - name: Install BeautifulSoup
+    command: pip install bs4
+  
+  - name: Install docker
+    yum:
+      name: docker
+      state: latest
+
+  - name: Start docker deamon
+    command: systemctl start docker
+  
+  - name: Create web app folder
+    file:
+      path: /home/ec2-user/app
+      state: directory
+      mode: 0755
+
+  - name: Copy Dockerfile
+    copy:
+     src: src/Dockerfile
+     dest: /home/ec2-user/app
+
+  - name: Copy Nginx default config file
+    copy:
+     src: src/default.conf
+     dest: /home/ec2-user/app
+
+  - name: Copy container usage check script
+    copy:
+     src: src/check.sh
+     dest: /home/ec2-user/app
+
+  - name: Copy word count app
+    copy:
+     src: src/count.py
+     dest: /home/ec2-user/app
+
+  - name: Copy health check script
+    copy:
+     src: src/health.sh
+     dest: /home/ec2-user/app
+
+  - name: Build docker image
+    command: docker build -t myimage .
+    args:
+      chdir: /home/ec2-user/app
+
+  - name: Change ownership for app folder
+    command: chown -R ec2-user:ec2-user /home/ec2-user/app
+
+  - name: Create Nginx container
+    command: docker run -d --name myweb -p 80:80 myimage
+
+  - name: Collect health info
+    shell: "sh health.sh" 
+    args:
+      chdir: /home/ec2-user/app
+  
+  - name: Collect docker usage every 10 seconds
+    shell: nohup sh check.sh >/dev/null 2>&1 &
+    args:
+      chdir: /home/ec2-user/app
+
+  - name: Collect the most frequent word in the default web page
+    shell: python count.py
+    args:
+      chdir: /home/ec2-user/app
+    register: counter
+
+  - name: Copy counter result
+    copy:
+      content: "{{ counter.stdout }}"
+      dest: /home/ec2-user/app/count.txt
+      

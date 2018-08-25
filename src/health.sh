@@ -1,0 +1,1 @@
+curl localhost/nginx_status > health.txt

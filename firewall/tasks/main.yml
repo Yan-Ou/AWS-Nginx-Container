@@ -1,0 +1,22 @@
+---
+  - name: Ensure repository is update
+    yum:
+      name: '*'
+      state: latest
+
+  - name: Install Firewalld
+    yum:
+      name: firewalld
+      state: latest
+  
+  - name: Enable Firewalld
+    command: systemctl enable firewalld
+
+  - name: Start Firewalld
+    command: systemctl start firewalld
+
+  - name: Allow http service
+    command: firewall-cmd --zone=public --add-service=http --permanent
+
+  - name: Reload Firewall settings
+    command: firewall-cmd --reload
